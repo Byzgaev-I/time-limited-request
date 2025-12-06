@@ -53,11 +53,230 @@
 · программа устойчива к ошибкам и не паникует.  
 
 
+### Выполнение:
 
+### Система обработки заказов с Context 
 
+## Описание
+Система эмулирует обработку заказов интернет-магазина с использованием горутин и контекстов Go.
 
+**Параметры:**
+- Таймаут на заказ: 3 секунды
+- Таймаут системы: 10 секунд
+- Количество заказов: 5
+- Режим обработки: параллельный
 
+### Требования
 
+- Go 1.18+
+- Стандартная библиотека Go
+
+### Установка и запуск
+
+```bash
+git clone <repository-url>
+cd order-processing-system
+go mod init order-processing
+go run GOCONTEXT-78_БызгаевАлександр.go
+```
+### Структура проекта
+
+order-processing-system/
+├── GOCONTEXT-78_БызгаевАлександр.go
+├── go.mod
+└── README.md
+
+### Технологии
+
+### Использую пакеты:  
+
+- context - управление жизненным циклом операций  
+- sync - синхронизация горутин через WaitGroup  
+- time - работа с таймерами и задержками  
+- fmt - форматированный вывод  
+- math/rand - генерация случайных значений  
+- strings - операции со строками  
+
+### Основные функции
+### processOrder
+
+- Принимает контекст с таймаутом 3 секунды  
+- Имитирует обработку заказа (1-5 секунд)  
+- Отправляет результат в канал  
+- Обрабатывает отмену по контексту  
+
+### main
+
+- Создает родительский контекст с таймаутом 10 секунд  
+- Запускает 5 горутин для обработки заказов  
+- Синхронизирует завершение через WaitGroup  
+- Собирает результаты через буферизованный канал  
+- Выводит статистику обработки  
+
+### Алгоритм работы
+
+### Инициализация родительского контекста (10 сек)
+- Генерация 5 заказов
+- Запуск 5 горутин параллельно
+- Каждая горутина получает дочерний контекст (3 сек)
+- Имитация обработки случайным таймером (1-5 сек)
+- Обработка через select: успех или таймаут
+- Отправка результата в буферизованный канал
+- Ожидание завершения всех горутин (WaitGroup)
+- Сбор и вывод статистики
+- Корректное завершение программы
+
+```bash
+go run GOCONTEXT-78_БызгаевАлександр.go
+```
+
+### Сам готовый код:
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"math/rand"
+	"strings"
+	"sync"
+	"time"
+)
+
+type Order struct {
+	ID       int
+	Product  string
+	Quantity int
+}
+
+type Result struct {
+	OrderID int
+	Success bool
+	Message string
+}
+
+func processOrder(ctx context.Context, order Order, results chan<- Result, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	fmt.Printf("[СТАРТ] Заказ #%d: начало обработки (%s, %d шт.)\n",
+		order.ID, order.Product, order.Quantity)
+
+	processingTime := time.Duration(1+rand.Intn(5)) * time.Second
+	done := make(chan bool)
+
+	go func() {
+		time.Sleep(processingTime)
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		result := Result{
+			OrderID: order.ID,
+			Success: true,
+			Message: fmt.Sprintf("Успешно обработан за %.1f сек", processingTime.Seconds()),
+		}
+		fmt.Printf("[УСПЕХ] Заказ #%d: %s\n", order.ID, result.Message)
+		results <- result
+
+	case <-ctx.Done():
+		result := Result{
+			OrderID: order.ID,
+			Success: false,
+			Message: fmt.Sprintf("Отменён: %v", ctx.Err()),
+		}
+		fmt.Printf("[ОТМЕНА] Заказ #%d: %s (планировалось %.1f сек)\n",
+			order.ID, result.Message, processingTime.Seconds())
+		results <- result
+	}
+}
+
+func main() {
+	rand.Seed(time.Now().UnixNano())
+
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("СИСТЕМА ОБРАБОТКИ ЗАКАЗОВ")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println()
+
+	systemCtx, systemCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer systemCancel()
+
+	fmt.Println("Таймаут системы: 10 секунд")
+	fmt.Println("Таймаут на заказ: 3 секунды")
+	fmt.Println()
+
+	orders := []Order{
+		{ID: 1, Product: "Ноутбук", Quantity: 1},
+		{ID: 2, Product: "Мышка", Quantity: 5},
+		{ID: 3, Product: "Клавиатура", Quantity: 2},
+		{ID: 4, Product: "Монитор", Quantity: 1},
+		{ID: 5, Product: "Наушники", Quantity: 3},
+	}
+
+	fmt.Printf("Всего заказов к обработке: %d\n\n", len(orders))
+
+	results := make(chan Result, len(orders))
+	var wg sync.WaitGroup
+	startTime := time.Now()
+
+	for _, order := range orders {
+		wg.Add(1)
+		orderCtx, orderCancel := context.WithTimeout(systemCtx, 3*time.Second)
+
+		go processOrder(orderCtx, order, results, &wg)
+
+		go func(cancel context.CancelFunc) {
+			time.Sleep(3 * time.Second)
+			cancel()
+		}(orderCancel)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("-", 60))
+	fmt.Println("РЕЗУЛЬТАТЫ ОБРАБОТКИ:")
+	fmt.Println(strings.Repeat("-", 60))
+	fmt.Println()
+
+	successCount := 0
+	failedCount := 0
+
+	for result := range results {
+		if result.Success {
+			successCount++
+		} else {
+			failedCount++
+		}
+	}
+
+	elapsed := time.Since(startTime)
+
+	fmt.Println()
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println("ИТОГОВАЯ СТАТИСТИКА:")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("Общее время работы: %.2f сек\n", elapsed.Seconds())
+	fmt.Printf("Успешно обработано: %d заказов\n", successCount)
+	fmt.Printf("Отменено: %d заказов\n", failedCount)
+	fmt.Printf("Всего заказов: %d\n", len(orders))
+	fmt.Println(strings.Repeat("=", 60))
+
+	select {
+	case <-systemCtx.Done():
+		fmt.Println("\n[ТАЙМАУТ] Система завершена по таймауту (10 сек)")
+	default:
+		fmt.Println("\n[OK] Все заказы обработаны в рамках лимита времени")
+	}
+
+	fmt.Println("\nСистема завершена корректно\n")
+}
+```
 
 
 
