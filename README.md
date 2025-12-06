@@ -144,18 +144,21 @@ import (
 	"time"
 )
 
+// Order - структура заказа
 type Order struct {
 	ID       int
 	Product  string
 	Quantity int
 }
 
+// Result - результат обработки заказа
 type Result struct {
 	OrderID int
 	Success bool
 	Message string
 }
 
+// processOrder - обработка одного заказа
 func processOrder(ctx context.Context, order Order, results chan<- Result, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -224,7 +227,6 @@ func main() {
 	for _, order := range orders {
 		wg.Add(1)
 		orderCtx, orderCancel := context.WithTimeout(systemCtx, 3*time.Second)
-
 		go processOrder(orderCtx, order, results, &wg)
 
 		go func(cancel context.CancelFunc) {
@@ -274,8 +276,9 @@ func main() {
 		fmt.Println("\n[OK] Все заказы обработаны в рамках лимита времени")
 	}
 
-	fmt.Println("\nСистема завершена корректно\n")
+	fmt.Println("\nСистема завершена корректно")
 }
+
 ```
 
 ### Запустил и проверил работу: 
