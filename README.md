@@ -84,7 +84,7 @@ go run GOCONTEXT-78_БызгаевАлександр.go
 order-processing-system/  
  ├── GOCONTEXT-78_БызгаевАлександр.go  
  ├── go.mod  
-└── README.md  
+ └── README.md  
   
 ### Технологии  
 
