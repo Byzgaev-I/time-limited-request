@@ -82,9 +82,9 @@ go run GOCONTEXT-78_БызгаевАлександр.go
 ### Структура проекта  
   
 order-processing-system/  
-├── GOCONTEXT-78_БызгаевАлександр.go  
-├── go.mod  
-└── README.md  
+ ├── GOCONTEXT-78_БызгаевАлександр.go  
+ ├── go.mod  
+ └── README.md  
   
 ### Технологии  
 
