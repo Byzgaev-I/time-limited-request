@@ -278,10 +278,19 @@ func main() {
 }
 ```
 
+Запустил и проверил работу: 
 
+![image](https://github.com/Byzgaev-I/time-limited-request/blob/main/Заказ%20-%201%20.png)
 
+### Проверка 
 
+```bash
+go fmt GOCONTEXT-78_БызгаевАлександр.go
+go vet GOCONTEXT-78_БызгаевАлександр.go
+go run GOCONTEXT-78_БызгаевАлександр.go
+```
 
+![image](https://github.com/Byzgaev-I/time-limited-request/blob/main/Проверка.png) 
 
 
 
